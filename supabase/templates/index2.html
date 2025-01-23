@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microbiome Data Visualization</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        select, button {
+            padding: 10px;
+            margin: 10px;
+            font-size: 16px;
+        }
+
+        .plot-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        #plot {
+            width: 100%;  /* Ensures the image takes up the full width of the container */
+            height: 600px; /* Increase the height to make the image window taller */
+            border: 1px solid #ddd;
+            display: block;
+            margin: 0 auto;
+        }
+        .error-message {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Microbiome Data Visualization</h1>
+
+        <div>
+            <label for="table-select">Select a Table:</label>
+            <select id="table-select">
+                <option value="">-- Choose Table --</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="plot-type">Select Plot Type:</label>
+            <select id="plot-type">
+                <option value="boxplot">Boxplot</option>
+                <option value="scatter">Scatterplot</option>
+            </select>
+        </div>
+
+        <div>
+            <button id="visualize-btn">Visualize Data</button>
+        </div>
+
+        <div class="error-message" id="error-message"></div>
+
+        <div class="plot-container" id="plot-container">
+            <img id="plot" alt="Plot will appear here">
+        </div>
+    </div>
+
+    <script>
+        const tableSelect = document.getElementById('table-select');
+        const plotTypeSelect = document.getElementById('plot-type');
+        const visualizeBtn = document.getElementById('visualize-btn');
+        const plotContainer = document.getElementById('plot-container');
+        const plotImg = document.getElementById('plot');
+        const errorMessage = document.getElementById('error-message');
+
+        // Fetch available tables from the backend and populate the select dropdown
+        async function fetchTables() {
+            try {
+                const response = await fetch('/tables');
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Populate the table select dropdown
+                data.forEach(table => {
+                    const option = document.createElement('option');
+                    option.value = table;
+                    option.textContent = table;
+                    tableSelect.appendChild(option);
+                });
+            } catch (error) {
+                errorMessage.textContent = 'Error fetching tables: ' + error.message;
+            }
+        }
+
+        // Fetch the plot image when the user clicks the visualize button
+        async function visualizeData() {
+            const selectedTable = tableSelect.value;
+            const selectedPlotType = plotTypeSelect.value;
+
+            if (!selectedTable) {
+                errorMessage.textContent = 'Please select a table first.';
+                return;
+            }
+
+            errorMessage.textContent = ''; // Clear previous errors
+
+            try {
+                const response = await fetch(`/visualize/${selectedTable}?plot_type=${selectedPlotType}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch plot');
+                }
+
+                const plotBlob = await response.blob();
+                const plotUrl = URL.createObjectURL(plotBlob);
+
+                plotImg.src = plotUrl;
+                plotContainer.style.display = 'block'; // Show the plot container
+
+            } catch (error) {
+                errorMessage.textContent = 'Error visualizing data: ' + error.message;
+            }
+        }
+
+        // Add event listener to the visualize button
+        visualizeBtn.addEventListener('click', visualizeData);
+
+        // Fetch the tables when the page loads
+        fetchTables();
+    </script>
+</body>
+</html>

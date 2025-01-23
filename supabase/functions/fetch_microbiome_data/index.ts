@@ -3,34 +3,41 @@
 // This enables autocomplete, go to definition, etc.
 
 // Setup type definitions for built-in Supabase Runtime APIs
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { Hono } from 'hono'; // Import Hono framework for routing
+import { createClient } from '@supabase/supabase-js'; // Import Supabase client
 
-serve(async (req) => {
-  try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-    )
+// Initialize Supabase client with environment variables
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseKey = Deno.env.get('SUPABASE_KEY')!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { data, error } = await supabaseClient
-      .from('microbiome_data')
-      .select('*')
+// Create a new Hono application
+const app = new Hono();
 
-    if (error) throw error
+// Add this new endpoint to your existing code
+app.get('/fetch_microbiome_data', async (c) => {
+  // Fetch data from the first table
+  const { data: table1Data, error: error1 } = await supabase
+    .from('table1') // Replace with your first table name
+    .select('*');
 
-    return new Response(
-      JSON.stringify({ data }),
-      { headers: { 'Content-Type': 'application/json' } },
-    )
-  } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    )
+  // Fetch data from the second table
+  const { data: table2Data, error: error2 } = await supabase
+    .from('table2') // Replace with your second table name
+    .select('*');
+
+  if (error1 || error2) {
+    return c.json({ error: error1?.message || error2?.message }, 500);
   }
-})
+
+  // Combine the data
+  const combinedData = [...(table1Data || []), ...(table2Data || [])];
+
+  return c.json(combinedData);
+});
+
+// Start the Deno server for handling requests
+Deno.serve(app.fetch);
 
 /* To invoke locally:
 

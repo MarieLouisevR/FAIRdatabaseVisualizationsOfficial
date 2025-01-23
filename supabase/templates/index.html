@@ -6,85 +6,7 @@
     <title>Select Table for Shannon Index</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f6f9;
-            color: #333;
-            margin: 0;
-            padding: 0;
-        }
-
-        header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 20px 0;
-            text-align: center;
-        }
-
-        header h1 {
-            font-size: 2.5em;
-            margin: 0;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 20px;
-            background-color: white;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-        }
-
-        select, button {
-            padding: 10px;
-            font-size: 1.2em;
-            margin: 10px 0;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            width: 100%;
-            box-sizing: border-box;
-            background-color: #f9f9f9;
-        }
-
-        button {
-            background-color: #3498db;
-            color: white;
-            cursor: pointer;
-            border: none;
-        }
-
-        button:disabled {
-            background-color: #bbb;
-            cursor: not-allowed;
-        }
-
-        button:hover {
-            background-color: #2980b9;
-        }
-
-        h2 {
-            font-size: 1.8em;
-            color: #2c3e50;
-        }
-
-        #shannonPlot {
-            max-width: 100%;
-            height: auto;
-            margin-top: 20px;
-            display: none;
-            border: 2px solid #3498db;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 40px;
-            padding: 20px;
-            background-color: #2c3e50;
-            color: white;
-            font-size: 0.9em;
-        }
+        /* Styles omitted for brevity, keep the same as in your code */
     </style>
 </head>
 <body>
@@ -97,12 +19,22 @@
         <select id="tableSelect">
             <option value="">Select a table</option>
         </select>
-
+        <select id="secondTableSelect">
+            <option value="">Select a table to combine</option>
+        </select>
+        
+        <label for="plotTypeSelect">Choose Plot Type:</label>
+        <select id="plotTypeSelect">
+            <option value="scatter">Scatter Plot</option>
+            <option value="boxplot">Boxplot</option>
+        </select>
+        
+        <button id="combineData" disabled>Combine Data</button>
         <button id="fetchShannonIndex" disabled>Visualize Shannon Index</button>
-
+    
         <h2>Shannon Index Visualization</h2>
         <img id="shannonPlot" alt="Shannon Index Plot" />
-    </div>
+    </div>    
 
     <footer>
         <p>&copy; 2025 Your Company Name | All Rights Reserved</p>
@@ -116,86 +48,47 @@
                     alert("Error fetching tables: " + data.error);
                     return;
                 }
-                // Populate the table dropdown with available tables
+                $('#tableSelect, #secondTableSelect').empty().append('<option value="">Select a table</option>');
                 data.forEach(function(table) {
-                    $('#tableSelect').append(new Option(table, table));
+                    $('#tableSelect, #secondTableSelect').append(new Option(table, table));
                 });
-            }).fail(function() {
-                alert("Failed to fetch tables.");
+                console.log("Tables populated:", data);
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                console.error("Failed to fetch tables:", textStatus, errorThrown);
             });
 
-            // Enable button when a table is selected
-            $('#tableSelect').change(function() {
-                const selectedTable = $(this).val();
-                $('#fetchShannonIndex').prop('disabled', !selectedTable);
+            // Enable buttons when tables are selected
+            $('#tableSelect, #secondTableSelect').change(function() {
+                const firstTable = $('#tableSelect').val();
+                const secondTable = $('#secondTableSelect').val();
+                $('#fetchShannonIndex').prop('disabled', !firstTable);
+                $('#combineData').prop('disabled', !(firstTable && secondTable));
             });
 
             // Handle button click to fetch and display the Shannon Index plot
             $('#fetchShannonIndex').click(function() {
                 const selectedTable = $('#tableSelect').val();
-                
                 if (selectedTable) {
                     $('#shannonPlot').hide(); // Hide previous plot
                     $('#shannonPlot').attr('src', `/shannon-index/${selectedTable}`).show();
                 } else {
                     alert("Please select a table.");
+                }
+            });
+
+            // Handle combine button click
+            $('#combineData').click(function() {
+                const firstTable = $('#tableSelect').val();
+                const secondTable = $('#secondTableSelect').val();
+                if (firstTable && secondTable) {
+                    $('#shannonPlot').hide(); // Hide previous plot
+                    // Call your Supabase Edge Function to combine data
+                    $('#shannonPlot').attr('src', `https://ymezzwyrcnbfaccvaexa.supabase.co/functions/v1/fetch_microbiome_data?table1=${firstTable}&table2=${secondTable}`).show();
+                } else {
+                    alert("Please select both tables.");
                 }
             });
         });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-    <script>
-        $(document).ready(function() {
-            const supabaseUrl = 'YOUR_SUPABASE_URL';
-            const supabaseKey = 'YOUR_SUPABASE_KEY';
-            const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-    
-            // Fetch tables when the page is loaded
-            $.get('/tables', function(data) {
-                if (data.error) {
-                    alert("Error fetching tables: " + data.error);
-                    return;
-                }
-                // Populate the table dropdown with available tables
-                data.forEach(function(table) {
-                    $('#tableSelect').append(new Option(table, table));
-                });
-            }).fail(function() {
-                alert("Failed to fetch tables.");
-            });
-    
-            // Enable button when a table is selected
-            $('#tableSelect').change(function() {
-                const selectedTable = $(this).val();
-                $('#fetchShannonIndex').prop('disabled', !selectedTable);
-            });
-    
-            // Handle button click to fetch and display the Shannon Index plot
-            $('#fetchShannonIndex').click(function() {
-                const selectedTable = $('#tableSelect').val();
-                
-                if (selectedTable) {
-                    $('#shannonPlot').hide(); // Hide previous plot
-                    $('#shannonPlot').attr('src', `/shannon-index/${selectedTable}`).show();
-                } else {
-                    alert("Please select a table.");
-                }
-            });
-    
-            // Real-time subscription to changes in the table
-            const selectedTable = $('#tableSelect').val();
-            if (selectedTable) {
-                const channel = supabase
-                    .from(`public.${selectedTable}`)
-                    .on('*', payload => {
-                        console.log('Change received!', payload);
-                        // Update the plot or data on your page based on the change
-                        $('#shannonPlot').hide(); // Hide the previous plot
-                        $('#shannonPlot').attr('src', `/shannon-index/${selectedTable}`).show();
-                    })
-                    .subscribe();
-            }
-        });
-    </script>    
 </body>
 </html>
