@@ -1,52 +1,33 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+import { Hono } from 'https://deno.land/x/hono@v3.11.7/mod.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import { Hono } from 'hono'; // Import Hono framework for routing
-import { createClient } from '@supabase/supabase-js'; // Import Supabase client
-
-// Initialize Supabase client with environment variables
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseKey = Deno.env.get('SUPABASE_KEY')!;
+const supabaseKey = Deno.env.get('SUPABASE_KEY')!; 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Create a new Hono application
 const app = new Hono();
 
-// Add this new endpoint to your existing code
-app.get('/fetch_microbiome_data', async (c) => {
-  // Fetch data from the first table
-  const { data: table1Data, error: error1 } = await supabase
-    .from('table1') // Replace with your first table name
-    .select('*');
+app.get('/fetch_tables', async (c) => {
+    try {
+        const { data, error } = await supabase.rpc('get_tables');
 
-  // Fetch data from the second table
-  const { data: table2Data, error: error2 } = await supabase
-    .from('table2') // Replace with your second table name
-    .select('*');
+        if (error) {
+            console.error("Supabase error:", error);
+            return c.json({ error: error.message }, 500);
+        }
 
-  if (error1 || error2) {
-    return c.json({ error: error1?.message || error2?.message }, 500);
-  }
+        if (!data || data.length === 0) {
+            console.warn("No tables found");
+            return c.json([], 200);
+        }
 
-  // Combine the data
-  const combinedData = [...(table1Data || []), ...(table2Data || [])];
-
-  return c.json(combinedData);
+        return c.json(data);
+    } catch (error) {
+        console.error("Unexpected error:", error);
+        return c.json({ error: error.message }, 500);
+    }
 });
 
-// Start the Deno server for handling requests
-Deno.serve(app.fetch);
 
-/* To invoke locally:
-
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
-
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/fetch_microbiome_data' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
-
-*/
+serve(app.fetch);

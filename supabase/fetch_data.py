@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from flask import Flask, render_template, jsonify, send_file, request
+import requests  # Import the requests library
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
@@ -18,6 +19,7 @@ CORS(app)  # Enable CORS for all routes
 # Retrieve Supabase URL and Key
 url = os.getenv('SUPABASE_URL')
 key = os.getenv('SUPABASE_KEY')
+edge_function_url = os.getenv('SUPABASE_EDGE_FUNCTION_URL')
 supabase: Client = create_client(url, key)
 
 debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
@@ -29,19 +31,39 @@ def index():
 @app.route('/tables', methods=['GET'])
 def get_tables():
     try:
-        response = supabase.rpc('get_tables').execute()
-        if hasattr(response, 'error') and response.error:
-            return jsonify({'error': response.error.message}), 500
-        tables = [table['table_name'] for table in response.data]
-        return jsonify(tables)  # Return JSON list of tables
+        headers = {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json"
+        }
+        
+        app.logger.info(f"Sending request to: {edge_function_url}")
+        app.logger.info(f"Headers: {headers}")
+        
+        response = requests.get(edge_function_url, headers=headers)
+        
+        app.logger.info(f"Response status code: {response.status_code}")
+        app.logger.info(f"Response content: {response.text}")
+        
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            error_message = f'Failed to fetch tables. Status: {response.status_code}, Content: {response.text}'
+            app.logger.error(error_message)
+            return jsonify({'error': error_message}), response.status_code
+    except requests.RequestException as e:
+        error_message = f"Network error occurred: {str(e)}"
+        app.logger.error(error_message)
+        return jsonify({'error': error_message}), 500
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_message = f"Unexpected error occurred: {str(e)}"
+        app.logger.error(error_message)
+        return jsonify({'error': error_message}), 500
 
 @app.route('/visualize/<table_name>', methods=['GET'])
 def visualize_route(table_name):
     try:
         # Validate table name
-        if not table_name or not isinstance(table_name, str):
+        if not_table_name or not isinstance(table_name, str):
             return jsonify({'error': 'Invalid table name'}), 400
 
         # Get the plot type from query parameters (default to 'boxplot')
@@ -126,10 +148,10 @@ def visualize_route(table_name):
             # Create a box plot
             plt.figure(figsize=(12, 8))
             sns.set(style="whitegrid")
-            sns.boxplot(data=shannon_indices, 
-                        color='skyblue', 
-                        fliersize=8, 
-                        linewidth=2, 
+            sns.boxplot(data=shannon_indices,
+                        color='skyblue',
+                        fliersize=8,
+                        linewidth=2,
                         palette='Set2')
             plt.title('Alpha Diversity - Shannon Index', fontsize=16, weight='bold')
             plt.ylabel('Shannon Index', fontsize=14)
@@ -143,13 +165,12 @@ def visualize_route(table_name):
 
             # Send the image as a response
             return send_file(img, mimetype='image/png')
-        
+
         else:
             return jsonify({'error': f'Invalid plot type: {plot_type}. Use "boxplot" or "scatter".'}), 400
-    
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 if __name__ == '__main__':
     app.run(debug=True)

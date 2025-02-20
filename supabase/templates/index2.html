@@ -9,22 +9,54 @@
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
+            background-color: #f0f8ff; /* Light blue background */
+            color: #333;
         }
 
         .container {
             max-width: 800px;
             margin: 0 auto;
-            text-align: center;
+            background-color: #ffffff; /* White background for content */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         h1 {
-            color: #333;
+            color: #005f7f; /* Blue color for the title */
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 1.1em;
+            color: #005f7f;
         }
 
         select, button {
-            padding: 10px;
+            padding: 12px;
             margin: 10px;
             font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            outline: none;
+            width: 100%;
+            max-width: 300px;
+            background-color: #e0f7fa; /* Light cyan background for inputs */
+        }
+
+        select:focus, button:focus {
+            border-color: #005f7f; /* Blue border on focus */
+        }
+
+        button {
+            background-color: #005f7f; /* Blue button background */
+            color: #fff;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #004d63; /* Darker blue on hover */
         }
 
         .plot-container {
@@ -38,14 +70,21 @@
             border: 1px solid #ddd;
             display: block;
             margin: 0 auto;
+            border-radius: 8px;
         }
+
         .error-message {
             color: red;
+            margin-top: 20px;
+        }
+
+        .success-message {
+            color: green;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-
     <div class="container">
         <h1>Microbiome Data Visualization</h1>
 
